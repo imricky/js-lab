@@ -1,6 +1,26 @@
 const axios = require('axios');
 const cheerio = require('cheerio')
+const mongoose = require('mongoose');
+mongoose.connect('mongodb://localhost:27017/spider-test', {useNewUrlParser: true});
+var db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', function() {
+  console.log('connect')
+});
+var kittySchema = new mongoose.Schema({
+  name: String
+});
+var Kitten = mongoose.model('Kitten', kittySchema);
 
+var arr = [{ name: 'Star Wars' }, { name: 'The Empire Strikes Back' }];
+var promise = Kitten.insertMany(arr);
+promise.then(function (jawbreaker) {
+  // ...
+  console.log('成功一条数据')
+  db.close(()=>{
+    console.log('关闭连接')
+  })
+})
 
 /**
  * 重写的函数
@@ -52,7 +72,7 @@ async function spider(param) {
   }
   console.log(`成功：${success}`)
   console.log(`失败：${error}`)
-  console.log(`结果：${resArr}`)
+  console.log(`结果：${resArr}`)  
   console.log('爬取完成')
 }
 
@@ -89,7 +109,7 @@ async function getSingleArticle(url) {
   }
 }
 
-spider();
+//spider();
 // 4579559
 // 4581295
 //10119522
