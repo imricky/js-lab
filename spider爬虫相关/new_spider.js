@@ -1,26 +1,18 @@
 const axios = require('axios');
 const cheerio = require('cheerio')
 const mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost:27017/spider-test', {useNewUrlParser: true});
+mongoose.connect('mongodb://localhost:27017/spider-test', { useNewUrlParser: true });
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', function() {
+db.once('open', function () {
   console.log('connect')
 });
-var kittySchema = new mongoose.Schema({
-  name: String
+var ArticleSchema = new mongoose.Schema({
+  content: Array,
+  success: Array,
+  error: Array
 });
-var Kitten = mongoose.model('Kitten', kittySchema);
-
-var arr = [{ name: 'Star Wars' }, { name: 'The Empire Strikes Back' }];
-var promise = Kitten.insertMany(arr);
-promise.then(function (jawbreaker) {
-  // ...
-  console.log('成功一条数据')
-  db.close(()=>{
-    console.log('关闭连接')
-  })
-})
+var Article = mongoose.model('Article', ArticleSchema);
 
 /**
  * 重写的函数
@@ -33,7 +25,7 @@ const Thread = {
   Sleep: (d) => {
     //生成时间随机数
     //1000-2000之间
-    let randomTime = parseInt(Math.random()*(2000-1000+1)+1000,10)
+    let randomTime = parseInt(Math.random() * (2000 - 1000 + 1) + 1000, 10)
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         resolve.call()
@@ -46,7 +38,7 @@ const Thread = {
 function generateFiveRandom(count) {
   let arr = [];
   for (let i = 0; i < count; i++) {
-    let a = parseInt(Math.random()*(20000000-500000+1)+500000,10)
+    let a = parseInt(Math.random() * (20000000 - 500000 + 1) + 500000, 10)
     arr.push(a)
   }
   console.log(arr)
@@ -64,7 +56,7 @@ async function spider(param) {
     let res = await getSingleArticle(url)
     if (res.length === 0) {
       error.push(spiderArr[i])
-    }else{
+    } else {
       success.push(spiderArr[i])
       resArr.push(res);
     }
@@ -72,8 +64,19 @@ async function spider(param) {
   }
   console.log(`成功：${success}`)
   console.log(`失败：${error}`)
-  console.log(`结果：${resArr}`)  
-  console.log('爬取完成')
+  console.log(`结果：${resArr}`)
+  let insertObj = {
+    content: resArr,
+    success: success,
+    error: error
+  }
+  var promise = Article.create(insertObj);
+  promise.then(function (jawbreaker) {
+    console.log('爬取成功,并存入数据库')
+    db.close(() => {
+      console.log('关闭连接')
+    })
+  })
 }
 
 
@@ -109,7 +112,7 @@ async function getSingleArticle(url) {
   }
 }
 
-//spider();
+spider();
 // 4579559
 // 4581295
 //10119522
