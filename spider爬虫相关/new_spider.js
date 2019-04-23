@@ -8,9 +8,12 @@ db.once('open', function () {
   console.log('connect')
 });
 var ArticleSchema = new mongoose.Schema({
-  content: Array,
-  success: Array,
-  error: Array
+  sourceId: Number, //文章编号
+  title: String, //标题
+  author: String, //作者
+  pub_date: String, //文章发布时间
+  crawl_date: Date,//爬取时间
+  content: Array //文章内容
 });
 var Article = mongoose.model('Article', ArticleSchema);
 
@@ -38,7 +41,7 @@ const Thread = {
 function generateFiveRandom(count) {
   let arr = [];
   for (let i = 0; i < count; i++) {
-    let a = parseInt(Math.random() * (20000000 - 500000 + 1) + 500000, 10)
+    let a = parseInt(Math.random() * (20000000 - 50000 + 1) + 50000, 10)
     arr.push(a)
   }
   console.log(arr)
@@ -47,14 +50,14 @@ function generateFiveRandom(count) {
 
 async function spider(param) {
   console.log(`正在爬取中`)
-  let spiderArr = generateFiveRandom(5)
+  let spiderArr = generateFiveRandom(10)
   let resArr = [];
   let success = [];
   let error = [];
   for (let i = 0; i < spiderArr.length; i++) {
     const url = `http://www.acfun.cn/a/ac${spiderArr[i]}`
-    let res = await getSingleArticle(url)
-    if (res.length === 0) {
+    let res = await getSingleArticle(url, spiderArr[i])
+    if (res.content.length === 0) {
       error.push(spiderArr[i])
     } else {
       success.push(spiderArr[i])
@@ -64,51 +67,71 @@ async function spider(param) {
   }
   console.log(`成功：${success}`)
   console.log(`失败：${error}`)
-  console.log(`结果：${resArr}`)
-  let insertObj = {
-    content: resArr,
-    success: success,
-    error: error
-  }
-  var promise = Article.create(insertObj);
-  promise.then(function (jawbreaker) {
-    console.log('爬取成功,并存入数据库')
-    db.close(() => {
-      console.log('关闭连接')
+  if (success.length !== 0) {
+    var promise = Article.insertMany(resArr);
+    promise.then((resolve) => {
+      console.log('爬取成功,并存入数据库')
+      db.close(() => {
+        console.log('关闭连接')
+      })
+    },(reject)=>{
+      console.log(`err${reject}`)
     })
-  })
+  } else {
+    db.close(() => {
+      console.log('关闭连接,没有成功爬取一条')
+    })
+  }
 }
 
 
-async function getSingleArticle(url) {
+async function getSingleArticle(url, sourceId) {
   try {
     const res = await axios.get(url);
-    let arr = [];
+    let articleObj = {
+      sourceId: sourceId, //文章编号
+      title: '', //标题
+      author: '', //作者
+      pub_date: '', //文章发布时间
+      crawl_date: new Date(),//爬取时间
+      content: [] //文章内容
+    };
     let html = res.data;
     const $ = cheerio.load(html);
+    //1.文章内容
     $('.article-content p').each(function (i, el) {
       let content = $(el).text();
-      arr.push(content)
+      articleObj.content.push(content);
       $(el).find('img').each(function (i, el) {
-        arr.push($(this).attr('src'))
+        articleObj.content.push($(this).attr('src'))
       })
     })
     $('.article-content div').each((i, el) => {
       let content = $(el).text();
-      arr.push(content)
+      articleObj.content.push(content);
       $(el).find('img').each(function (i, el) {
-        arr.push($(this).attr('src'))
+        articleObj.content.push($(this).attr('src'))
       })
     })
 
-    arr = arr.filter((el, i) => {
+    articleObj.content = articleObj.content.filter((el, i) => {
       return el !== ''
     })
-    console.log(arr)
-    return arr;
+    console.log(`文章内容：${articleObj.content}`)
+    //up主名字
+    const upname = $('.up-name>a').text();
+    articleObj.author = upname;
+    //文章标题
+    const articleTitle = $('.caption').text()
+    articleObj.title = articleTitle;
+    //文章发布时间
+    const articleTime = $('.up-time').text();
+    articleObj.pub_date = articleTime;
+
+    return articleObj;
   } catch (error) {
     console.error(error);
-    return [];
+    return {};
   }
 }
 
