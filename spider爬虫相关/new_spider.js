@@ -1,6 +1,8 @@
 const axios = require('axios');
 const cheerio = require('cheerio')
 const mongoose = require('mongoose');
+const Redis = require('ioredis');
+const redis = new Redis();
 mongoose.connect('mongodb://localhost:27017/spider-test', { useNewUrlParser: true });
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
@@ -8,7 +10,7 @@ db.once('open', function () {
   console.log('connect')
 });
 var ArticleSchema = new mongoose.Schema({
-  sourceId: Number, //文章编号
+  sourceId: String, //文章编号
   title: String, //标题
   author: String, //作者
   pub_date: String, //文章发布时间
@@ -38,19 +40,31 @@ const Thread = {
 }
 
 //1.生成5个随机数，数值在500000-2000000之间
-function generateFiveRandom(count) {
-  let arr = [];
-  for (let i = 0; i < count; i++) {
-    let a = parseInt(Math.random() * (20000000 - 50000 + 1) + 50000, 10)
-    arr.push(a)
+// function generateFiveRandom(count) {
+//   let arr = [];
+//   for (let i = 0; i < count; i++) {
+//     let a = parseInt(Math.random() * (20000000 - 50000 + 1) + 50000, 10)
+//     arr.push(a)
+//   }
+//   console.log(arr)
+//   return arr;
+// }
+
+//使用redis的spop功能，每次pop出随机的数，并且将失败的数放入失败池里
+async function generateFiveRandom(count) {
+  try{
+    let res = await redis.spop('spider_ids_generate',count);
+    console.log(res)
+    redis.quit();
+    return res
+  }catch(e){
+    return [];
   }
-  console.log(arr)
-  return arr;
 }
 
 async function spider(param) {
   console.log(`正在爬取中`)
-  let spiderArr = generateFiveRandom(10)
+  let spiderArr = await generateFiveRandom(10)
   let resArr = [];
   let success = [];
   let error = [];
@@ -74,7 +88,7 @@ async function spider(param) {
       db.close(() => {
         console.log('关闭连接')
       })
-    },(reject)=>{
+    }, (reject) => {
       console.log(`err${reject}`)
     })
   } else {
@@ -117,7 +131,7 @@ async function getSingleArticle(url, sourceId) {
     articleObj.content = articleObj.content.filter((el, i) => {
       return el !== ''
     })
-    console.log(`文章内容：${articleObj.content}`)
+    console.log(`文章内容${sourceId}：${articleObj.content}`)
     //up主名字
     const upname = $('.up-name>a').text();
     articleObj.author = upname;
