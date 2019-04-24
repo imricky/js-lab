@@ -52,19 +52,19 @@ const Thread = {
 
 //使用redis的spop功能，每次pop出随机的数，并且将失败的数放入失败池里
 async function generateFiveRandom(count) {
-  try{
-    let res = await redis.spop('spider_ids_generate',count);
+  try {
+    let res = await redis.spop('spider_ids_generate', count);
     console.log(res)
     redis.quit();
     return res
-  }catch(e){
+  } catch (e) {
     return [];
   }
 }
 
 async function spider(param) {
   console.log(`正在爬取中`)
-  let spiderArr = await generateFiveRandom(10)
+  let spiderArr = await generateFiveRandom(20)
   let resArr = [];
   let success = [];
   let error = [];
@@ -148,8 +148,9 @@ async function getSingleArticle(url, sourceId) {
     return {};
   }
 }
-
 spider();
+
+
 // 4579559
 // 4581295
 //10119522
