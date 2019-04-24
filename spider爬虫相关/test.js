@@ -1,53 +1,28 @@
-const axios = require('axios');
-const cheerio = require('cheerio')
-async function getSingleArticle(url, sourceId) {
-  try {
-    const res = await axios.get(url);
-    let articleObj = {
-      sourceId: sourceId, //文章编号
-      title: '', //标题
-      author: '', //作者
-      pub_date: '', //文章发布时间
-      crawl_date: new Date(),//爬取时间
-      content: [] //文章内容
-    };
-    let html = res.data;
-    const $ = cheerio.load(html);
-    //1.文章内容
-    $('.article-content p').each(function (i, el) {
-      let content = $(el).text();
-      articleObj.content.push(content);
-      $(el).find('img').each(function (i, el) {
-        articleObj.content.push($(this).attr('src'))
-      })
-    })
-    $('.article-content div').each((i, el) => {
-      let content = $(el).text();
-      articleObj.content.push(content);
-      $(el).find('img').each(function (i, el) {
-        articleObj.content.push($(this).attr('src'))
-      })
-    })
+var Redis = require('ioredis');
+var redis = new Redis();
 
-    articleObj.content = articleObj.content.filter((el, i) => {
-      return el !== ''
-    })
-    console.log(`文章内容：${articleObj.content}`)
-    //up主名字
-    const upname = $('.up-name>a').text();
-    articleObj.author = upname;
-    //文章标题
-    const articleTitle = $('.caption').text()
-    articleObj.title = articleTitle;
-    //文章发布时间
-    const articleTime = $('.up-time').text();
-    articleObj.pub_date = articleTime;
-    console.log(articleObj)
-    return articleObj;
-  } catch (error) {
-    console.error(error);
-    return {};
+(async function generateIDsToRedis() {
+  // for (let i = 0; i < 2000; i++) {
+  //   const arr = new Array(10000);
+  //   for (let j = 0; j < 10000; j++) {
+  //     arr.push(i * 10000 + j);
+  //   }
+  //   await redis.sadd('spider_ids_generate', ...arr);
+  // }
+  //生成id为400w到2000w的数据,提供爬虫爬取
+  console.time('begin')
+  let arr = [];
+  for (let i = 4000; i < 20000; i++) {
+    const arr = new Array(1000);
+    for (let j = 0; j < 1000; j++) {
+      arr.push(i * 1000 + j);
+    }
+    await redis.sadd('spider_ids_generate', ...arr)
   }
-}
-
-getSingleArticle('http://www.acfun.cn/a/ac4579559', 4579559)
+  console.timeEnd('begin')
+})()
+  .then(r => {
+    console.log('done');
+  })
+  .catch(e => {
+  });
