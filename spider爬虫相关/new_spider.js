@@ -64,7 +64,7 @@ async function generateFiveRandom(count) {
 
 async function spider(param) {
   console.log(`正在爬取中`)
-  let spiderArr = await generateFiveRandom(20)
+  let spiderArr = await generateFiveRandom(10)
   let resArr = [];
   let success = [];
   let error = [];
@@ -101,7 +101,15 @@ async function spider(param) {
 
 async function getSingleArticle(url, sourceId) {
   try {
-    const res = await axios.get(url);
+    const res = await axios.get(url)
+      .catch(e => {
+        if (e.response && e.response.status && e.response.status == 404) {
+          const err = new Error('Not Found');
+          return {}
+        } else {
+          return {}
+        }
+      })
     let articleObj = {
       sourceId: sourceId, //文章编号
       title: '', //标题
@@ -142,7 +150,7 @@ async function getSingleArticle(url, sourceId) {
     const articleTime = $('.up-time').text();
     articleObj.pub_date = articleTime;
 
-    return articleObj;
+    return Object.assign({}, articleObj);
   } catch (error) {
     console.error(error);
     return {};
